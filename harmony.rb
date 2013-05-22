@@ -77,7 +77,11 @@ class Harmony < TerminalRunner
       rpath = self.remote_path_for(file)
       @ftp.chdir rpath
       puts " ## #{file} => #{rpath}".green if @robust
-      @ftp.puttextfile(file)
+      if file.end_with? ".png", ".gif", ".jpg", ".bmp", ".svg", ".tiff", ".raw"
+        @ftp.putbinaryfile(file)
+      else
+        @ftp.puttextfile(file)
+      end
     end
 
     self.clear
