@@ -214,6 +214,7 @@ class DirectoryWatcher
       
     directory.rewind
     directory.each{ |fname|
+       next if fname.start_with? '.'
        file_path = "#{directory.path}/#{fname}"
        scan_dir(Dir.new(file_path), override) unless fname == "." || fname == ".." || File.file?(file_path)
        next if (@name_regexp.respond_to?( :match ) && !@name_regexp.match( fname )) || !File.file?( file_path )
