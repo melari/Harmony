@@ -60,7 +60,13 @@ class Harmony < TerminalRunner
     self.send_to_remote if command == "send" || command == "s"
     self.clear if command == "clear"
     self.show_status if command == "status" || command == "st"
+    self.deploy if command == "deploy"
     false
+  end
+
+  def self.deploy
+    @watcher.add_all
+    self.send_to_remote
   end
 
   def self.send_to_remote
@@ -101,6 +107,7 @@ class Harmony < TerminalRunner
     puts "status (st) - Show a list of files that will be transfered"
     puts "clear - Mark all files as synced"
     puts "send (s) - Send all new and modified files to the remote server"
+    puts "deploy - Send all files, regardless of their state"
   end
 
   def self.open_connection

@@ -187,7 +187,11 @@ class DirectoryWatcher
       @scanned_once = true
    end
 
-   def scan_dir(directory)
+   def add_all
+     scan_dir(@directory, true)
+   end
+
+   def scan_dir(directory, override = false)
     # Setup the checks
     # ToDo: CRC
     checks = {
@@ -211,7 +215,7 @@ class DirectoryWatcher
     directory.rewind
     directory.each{ |fname|
        file_path = "#{directory.path}/#{fname}"
-       scan_dir(Dir.new(file_path)) unless fname == "." || fname == ".." || File.file?(file_path)
+       scan_dir(Dir.new(file_path), override) unless fname == "." || fname == ".." || File.file?(file_path)
        next if (@name_regexp.respond_to?( :match ) && !@name_regexp.match( fname )) || !File.file?( file_path )
        the_file = File.new( file_path )
        file_stats = File.stat( file_path )
@@ -222,6 +226,7 @@ class DirectoryWatcher
           new_stats[check_name] = check[:proc].call( the_file, file_stats )
        }
        
+       @on_add.call(the_file, new_stats) if override
        if saved_stats
           if @on_modify.respond_to?( :call )
              sufficiently_modified = @onmodify_requiresall
