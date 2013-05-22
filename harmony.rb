@@ -49,19 +49,38 @@ class Harmony < TerminalRunner
     while true
       break if self.get_command
     end
+    @thread.kill if @thread
     self.close_connection
   end
 
   def self.get_command
     print "Harmony:: ".yellow
     command = gets.chomp
-    return true if command == "stop"
+    return true if command == "exit" || command == "quit"
     self.show_help if command == "help"
     self.send_to_remote if command == "send" || command == "s"
     self.clear if command == "clear"
     self.show_status if command == "status" || command == "st"
     self.deploy if command == "deploy"
+    self.start_auto if command == "auto"
+    self.stop_auto if command == "stop"
     false
+  end
+
+  def self.start_auto
+    puts " ## Auto upload has been started. Type 'stop' to kill the thread.".red
+    @thread = Thread.new do
+      while true
+        self.send_to_remote
+        sleep 2
+      end
+    end
+  end
+
+  def self.stop_auto
+    return unless @thread
+    @thread.kill
+    puts " ## Auto upload thread has been killed.".red
   end
 
   def self.deploy
@@ -107,11 +126,13 @@ class Harmony < TerminalRunner
   def self.show_help
     puts " ## Harmony Help".red
     puts "help - Show this help file"
-    puts "stop - Quit Harmony"
+    puts "exit (quit) - Quit Harmony"
     puts "status (st) - Show a list of files that will be transfered"
     puts "clear - Mark all files as synced"
     puts "send (s) - Send all new and modified files to the remote server"
     puts "deploy - Send all files, regardless of their state"
+    puts "auto - Automatically run 'send' every 2 seconds"
+    puts "stop - reverses the 'auto' command"
   end
 
   def self.open_connection
