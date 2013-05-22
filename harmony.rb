@@ -13,6 +13,7 @@ class Harmony < TerminalRunner
 
   option "--help", 0, "", "Show this help document."
   option "--remote", 1, "path", "Remote path to use."
+  option "--robust", 0, "", "Show all file transfers."
 
   help ""
 
@@ -27,20 +28,19 @@ class Harmony < TerminalRunner
     @server = @@params["server"]
     @user = @@params["user"]
     @password = @@params["password"]
-    @directory = @@params["directory"]
+    @directory = Dir.new(@@params["directory"])
     @remote_path = @@options.include?("--remote") ? @@options["--remote"][0] : ""
+    @robust = @@options.include? "--robust"
 
     @watcher = Dir::DirectoryWatcher.new(@directory)
-    @watcher.on_add = Proc.new do |file, info|
+
+    @modified_proc = Proc.new do |file, info|
       @modified << file.path
     end
 
-    @watcher.on_modify = Proc.new do |file, info|
-      @modified << file.path
-    end
-
-    @watcher.on_remove = Proc.new do |file, info|
-    end
+    @watcher.on_add = @modified_proc
+    @watcher.on_modify = @modified_proc
+    #@watcher.on_remove = @modified_proc
 
     @watcher.scan_now
     self.clear
@@ -65,11 +65,21 @@ class Harmony < TerminalRunner
 
   def self.send_to_remote
     @watcher.scan_now
+    return if @modified.empty?
     self.open_connection
-    @ftp.chdir @remote_path
     @modified.each do |file|
+      rpath = self.remote_path_for(file)
+      @ftp.chdir rpath
+      puts " ## #{file} => #{rpath}".green if @robust
       @ftp.puttextfile(file)
     end
+
+    self.clear
+  end
+
+  def self.remote_path_for(file)
+    extra_path = file.sub(@directory.path, "")
+    @remote_path + extra_path[0, extra_path.rindex("/")]
   end
 
   def self.clear
