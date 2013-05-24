@@ -136,7 +136,15 @@ class Harmony < TerminalRunner
   end
 
   def self.open_connection
-    @ftp.list if @ftp # Checks for server induced timeouts.
+    if @ftp
+      begin
+        @ftp.list
+      rescue Net::FTPTempError
+        puts " ## Connection was closed by server".pink
+        @ftp.close
+      end
+    end
+
     if @ftp.nil? || @ftp.closed?
       puts " ## Connection opening".red
       @ftp = Net::FTP.new(@server)
