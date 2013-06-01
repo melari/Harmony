@@ -93,6 +93,7 @@ class Harmony < TerminalRunner
     return if @modified.empty?
     self.open_connection
     @modified.each do |file|
+      next if file.end_with? "~"
       rpath = self.remote_path_for(file)
       @ftp.chdir rpath
       puts " ## #{file} => #{rpath}".green if @robust
