@@ -95,6 +95,7 @@ class Harmony < TerminalRunner
     failed = !self.open_connection
     unless failed
       @modified.each do |file|
+        next if file.end_with? "~"
         begin
           Timeout::timeout(@timeout) do
             rpath = self.remote_path_for(file)
