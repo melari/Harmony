@@ -14,7 +14,6 @@ class Harmony < TerminalRunner
 
   option "--help", 0, "", "Show this help document."
   option "--remote", 1, "path", "Remote path to use."
-  option "--robust", 0, "", "Show all file transfers."
 
   help ""
 
@@ -31,7 +30,6 @@ class Harmony < TerminalRunner
     @password = @@params["password"]
     @directory = Dir.new(@@params["directory"])
     @remote_path = @@options.include?("--remote") ? @@options["--remote"][0] : ""
-    @robust = @@options.include? "--robust"
 
     @watcher = Dir::DirectoryWatcher.new(@directory)
 
