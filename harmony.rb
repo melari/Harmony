@@ -90,23 +90,24 @@ class Harmony < TerminalRunner
   def self.send_to_remote
     @watcher.scan_now
     return if @modified.empty?
-    self.open_connection
-    failed = false
-    @modified.each do |file|
-      begin
-        Timeout::timeout(2) do
-          rpath = self.remote_path_for(file)
-          @ftp.chdir rpath
-          if file.end_with? ".png", ".gif", ".jpg", ".bmp", ".svg", ".tiff", ".raw"
-            @ftp.putbinaryfile(file)
-          else
-            @ftp.puttextfile(file)
+    failed = !self.open_connection
+    unless failed
+      @modified.each do |file|
+        begin
+          Timeout::timeout(2) do
+            rpath = self.remote_path_for(file)
+            @ftp.chdir rpath
+            if file.end_with? ".png", ".gif", ".jpg", ".bmp", ".svg", ".tiff", ".raw"
+              @ftp.putbinaryfile(file)
+            else
+              @ftp.puttextfile(file)
+            end
+            puts " ## [SUCCESS] #{file} => #{rpath}".green
           end
-          puts " ## [SUCCESS] #{file} => #{rpath}".green
+        rescue Timeout::Error
+          failed = true
+          puts " ## [ FAIL  ] #{file} failed to sync.".red
         end
-      rescue Timeout::Error
-        failed = true
-        puts " ## [ FAIL  ] #{file} failed to sync.".red
       end
     end
 
@@ -150,20 +151,29 @@ class Harmony < TerminalRunner
   end
 
   def self.open_connection
-    if @ftp
-      begin
-        @ftp.list
-      rescue Net::FTPTempError
-        puts " ## Connection was closed by server".pink
-        @ftp.close
+    Timeout.timeout(5) do
+      if @ftp
+        begin
+          @ftp.list
+        rescue Net::FTPTempError
+          puts " ## Connection was closed by server".pink
+          @ftp.close
+        end
+      end
+
+      if @ftp.nil? || @ftp.closed?
+        puts " ## Connection opening".red
+        @ftp = Net::FTP.new(@server)
+        @ftp.login(@user, @password)
       end
     end
-
-    if @ftp.nil? || @ftp.closed?
-      puts " ## Connection opening".red
-      @ftp = Net::FTP.new(@server)
-      @ftp.login(@user, @password)
-    end
+    true
+  rescue SocketError
+    puts " ## [FAIL] Unable to open connection to server.".red
+    false
+  rescue Timeout::Error
+    puts " ## [TIMEOUT] Failed to connect to server.".red
+    false
   end
 
   def self.close_connection
