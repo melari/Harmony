@@ -176,6 +176,8 @@ class Harmony < TerminalRunner
     false
   rescue Timeout::Error
     puts " ## [TIMEOUT] Failed to connect to server.".red
+    @ftp.close
+    @ftp = nil
     false
   end
 
