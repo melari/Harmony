@@ -158,7 +158,7 @@ class Harmony < TerminalRunner
       if @ftp
         begin
           @ftp.list
-        rescue Net::FTPTempError
+        rescue Net::FTPTempError, Net::FTPPermError
           puts " ## Connection was closed by server".pink
           @ftp.close
         end
