@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 require 'net/ftp'
 require 'terrun'
+require 'timeout'
 require_relative 'directory_watcher.rb'
 
 class Harmony < TerminalRunner
@@ -92,18 +93,30 @@ class Harmony < TerminalRunner
     @watcher.scan_now
     return if @modified.empty?
     self.open_connection
+    failed = false
     @modified.each do |file|
-      rpath = self.remote_path_for(file)
-      @ftp.chdir rpath
-      puts " ## #{file} => #{rpath}".green if @robust
-      if file.end_with? ".png", ".gif", ".jpg", ".bmp", ".svg", ".tiff", ".raw"
-        @ftp.putbinaryfile(file)
-      else
-        @ftp.puttextfile(file)
+      begin
+        Timeout::timeout(2) do
+          rpath = self.remote_path_for(file)
+          @ftp.chdir rpath
+          if file.end_with? ".png", ".gif", ".jpg", ".bmp", ".svg", ".tiff", ".raw"
+            @ftp.putbinaryfile(file)
+          else
+            @ftp.puttextfile(file)
+          end
+          puts " ## [SUCCESS] #{file} => #{rpath}".green
+        end
+      rescue Timeout::Error
+        failed = true
+        puts " ## [ FAIL  ] #{file} failed to sync.".red
       end
     end
 
-    self.clear
+    if failed
+      puts " ## Some files failed to transfer. The dirty list has not been cleared.".pink
+    else
+      self.clear
+    end
   end
 
   def self.remote_path_for(file)
