@@ -128,6 +128,9 @@ class Harmony < TerminalRunner
 
   def self.show_status
     @watcher.scan_now
+
+    return puts " ## Directory is in sync".green if @modified.count == 0
+
     puts " ## Files to be uploaded".red
     @modified.each do |file|
       puts "+   #{file}".pink
