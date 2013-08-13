@@ -14,6 +14,7 @@ class Harmony < TerminalRunner
 
   option "--help", 0, "", "Show this help document."
   option "--remote", 1, "path", "Remote path to use."
+  option "--timeout", 1, "seconds", "Length of time to allow files to transfer. (default 2)"
 
   help ""
 
@@ -30,6 +31,7 @@ class Harmony < TerminalRunner
     @password = @@params["password"]
     @directory = Dir.new(@@params["directory"])
     @remote_path = @@options.include?("--remote") ? @@options["--remote"][0] : ""
+    @timeout = @@options.include?("--timeout") ? @@options["--timeout"][0].to_i : 2
 
     @watcher = Dir::DirectoryWatcher.new(@directory)
 
@@ -94,7 +96,7 @@ class Harmony < TerminalRunner
     unless failed
       @modified.each do |file|
         begin
-          Timeout::timeout(2) do
+          Timeout::timeout(@timeout) do
             rpath = self.remote_path_for(file)
             @ftp.chdir rpath
             if file.end_with? ".png", ".gif", ".jpg", ".bmp", ".svg", ".tiff", ".raw"
@@ -151,7 +153,7 @@ class Harmony < TerminalRunner
   end
 
   def self.open_connection
-    Timeout.timeout(5) do
+    Timeout.timeout(@timeout) do
       if @ftp
         begin
           @ftp.list
