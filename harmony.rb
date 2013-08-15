@@ -110,7 +110,7 @@ class Harmony < TerminalRunner
         rescue Timeout::Error
           failed = true
           puts " ## [ FAIL  ] #{file} timed out while syncing".red
-        rescue Net::FTPTempError, Net::FTPPermError
+        rescue Net::FTPTempError, Net::FTPPermError, Net::FTPReplyError
           failed = true
           puts " ## [ FAIL  ] #{file} failed to sync".red
         end
