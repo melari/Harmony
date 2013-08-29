@@ -16,6 +16,7 @@ class Harmony < TerminalRunner
   option "--remote", 1, "path", "Remote path to use."
   option "--timeout", 1, "seconds", "Length of time to allow files to transfer. (default 2)"
   option "--coffee", 1, "target", "Automatically compile saved coffeescript files to the given directory."
+  option "--eco", 2, "target identifier", "Automatically compile saved eco files to the given directory."
 
   help ""
 
@@ -35,12 +36,21 @@ class Harmony < TerminalRunner
     @timeout = @@options.include?("--timeout") ? @@options["--timeout"][0].to_i : 2
     @compile_coffeescript = @@options.include?("--coffee") ? @@options["--coffee"][0] : nil
 
+    @compile_eco = nil
+    if @@options.include?("--eco")
+      @compile_eco = @@options["--eco"][0]
+      @eco_ident = @@options["--eco"][1]
+    end
+
     @watcher = Dir::DirectoryWatcher.new(@directory)
 
     @modified_proc = Proc.new do |file, info|
       @modified << file.path
       if file.path.end_with?(".coffee") && @compile_coffeescript
         `coffee -o #{@compile_coffeescript} -c #{file.path}`
+      end
+      if file.path.end_with?(".eco") && @compile_eco
+        `eco -i #{@eco_ident} -o #{@compile_eco} #{file.path}`
       end
     end
 
