@@ -27,6 +27,7 @@ class Harmony < TerminalRunner
     end
 
     @modified = []
+    @active = false
 
     @server = @@params["server"]
     @user = @@params["user"]
@@ -46,11 +47,13 @@ class Harmony < TerminalRunner
 
     @modified_proc = Proc.new do |file, info|
       @modified << file.path
-      if file.path.end_with?(".coffee") && @compile_coffeescript
-        `coffee -o #{@compile_coffeescript} -c #{file.path}`
-      end
-      if file.path.end_with?(".eco") && @compile_eco
-        `eco -i #{@eco_ident} -o #{@compile_eco} #{file.path}`
+      if @active
+        if file.path.end_with?(".coffee") && @compile_coffeescript
+          `coffee -o #{@compile_coffeescript} -c #{file.path}`
+        end
+        if file.path.end_with?(".eco") && @compile_eco
+          `eco -i #{@eco_ident} -o #{@compile_eco} #{file.path}`
+        end
       end
     end
 
@@ -60,6 +63,7 @@ class Harmony < TerminalRunner
 
     @watcher.scan_now
     self.clear
+    @active = true
 
     puts " ## Harmony is now running".red
     while true
