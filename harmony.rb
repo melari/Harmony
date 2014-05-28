@@ -17,6 +17,7 @@ class Harmony < TerminalRunner
   option "--timeout", 1, "seconds", "Length of time to allow files to transfer. (default 2)"
   option "--coffee", 1, "target", "Automatically compile saved coffeescript files to the given directory."
   option "--eco", 2, "target identifier", "Automatically compile saved eco files to the given directory."
+  option "--auto", 0, "", "Start up auto mode automatically."
 
   help ""
 
@@ -66,6 +67,9 @@ class Harmony < TerminalRunner
     @active = true
 
     puts " ## Harmony is now running".red
+
+    self.start_auto if @@options.include?("--auto")
+
     while true
       break if self.get_command
     end
@@ -239,5 +243,5 @@ end
 
 
 if __FILE__ == $0
-  x = Harmony.start(ARGV)
+  Harmony.start(ARGV)
 end
