@@ -70,8 +70,13 @@ class Harmony < TerminalRunner
 
     self.start_auto if @@options.include?("--auto")
 
-    while true
-      break if self.get_command
+    begin
+      while true
+        break if self.get_command
+      end
+    rescue => e
+      puts e.to_s.red
+      puts " ## FATAL ERROR OCCURRED. SHUTTING DOWN.".red
     end
     @thread.kill if @thread
     self.close_connection
@@ -88,15 +93,26 @@ class Harmony < TerminalRunner
     self.deploy if command == "deploy"
     self.start_auto if command == "auto"
     self.stop_auto if command == "stop"
+    self.ftp if command == "ftp"
     false
+  end
+
+  def self.ftp
+    `ftp ftp://#{@user}:#{@password}@#{@server}`
   end
 
   def self.start_auto
     puts " ## Auto upload has been started. Type 'stop' to kill the thread.".red
     @thread = Thread.new do
-      while true
-        self.send_to_remote
-        sleep 2
+      begin
+        while true
+          self.send_to_remote
+          sleep 2
+        end
+      rescue => e
+        puts e.to_s.red
+        puts " ## FATAL ERROR OCCURRED IN AUTO THREAD. SHUTTING DOWN.".red
+        self.stop_auto
       end
     end
   end
@@ -133,9 +149,10 @@ class Harmony < TerminalRunner
         rescue Timeout::Error
           failed = true
           puts " ## [ FAIL  ] #{file} timed out while syncing".red
-        rescue Net::FTPError
+        rescue Net::FTPError => e
           failed = true
           puts " ## [ FAIL  ] #{file} failed to sync".red
+          puts e.message
         end
       end
     end
