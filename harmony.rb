@@ -84,7 +84,7 @@ class Harmony < TerminalRunner
 
   def self.get_command
     print "Harmony:: ".yellow
-    command = gets.chomp
+    command, arg = gets.chomp.split(' ')
     return true if command == "exit" || command == "quit"
     self.show_help if command == "help"
     self.send_to_remote if command == "send" || command == "s"
@@ -93,6 +93,7 @@ class Harmony < TerminalRunner
     self.deploy if command == "deploy"
     self.start_auto if command == "auto"
     self.stop_auto if command == "stop"
+    @modified_proc.call(File.new(arg), nil) if command == "mark"
     self.ftp if command == "ftp"
     false
   end
@@ -198,6 +199,7 @@ class Harmony < TerminalRunner
     puts "clear - Mark all files as synced"
     puts "send (s) - Send all new and modified files to the remote server"
     puts "deploy - Send all files, regardless of their state"
+    puts "mark [file] - Mark the specified file as changed (use format ./directory/file)"
     puts "auto - Automatically run 'send' every 2 seconds"
     puts "stop - reverses the 'auto' command"
   end
