@@ -36,6 +36,7 @@ class Harmony < TerminalRunner
     @remote_path = @@options.include?("--remote") ? @@options["--remote"][0] : ""
     @timeout = @@options.include?("--timeout") ? @@options["--timeout"][0].to_i : 2
     @compile_coffeescript = @@options.include?("--coffee") ? @@options["--coffee"][0] : nil
+    @ignored = []
 
     @compile_eco = nil
     if @@options.include?("--eco")
@@ -46,13 +47,15 @@ class Harmony < TerminalRunner
     @watcher = Dir::DirectoryWatcher.new(@directory)
 
     @modified_proc = Proc.new do |file, info|
-      @modified << file.path
-      if @active
-        if file.path.end_with?(".coffee") && @compile_coffeescript
-          `coffee -o #{@compile_coffeescript} -c #{file.path}`
-        end
-        if file.path.end_with?(".eco") && @compile_eco
-          `eco -i #{@eco_ident} -o #{@compile_eco} #{file.path}`
+      unless @ignored.include?(file.path)
+        @modified << file.path
+        if @active
+          if file.path.end_with?(".coffee") && @compile_coffeescript
+            `coffee -o #{@compile_coffeescript} -c #{file.path}`
+          end
+          if file.path.end_with?(".eco") && @compile_eco
+            `eco -i #{@eco_ident} -o #{@compile_eco} #{file.path}`
+          end
         end
       end
     end
@@ -66,6 +69,14 @@ class Harmony < TerminalRunner
     @active = true
 
     puts " ## Harmony is now running".red
+
+    if File.exist?(".harmonyignore")
+      puts " ## Loading .harmonyignore".pink
+      File.readlines('.harmonyignore').each do |line|
+        @ignored << line[0..-2]
+        puts "X  Ignoring #{line}".pink
+      end
+    end
 
     self.start_auto if @@options.include?("--auto")
 
