@@ -18,6 +18,7 @@ class Harmony < TerminalRunner
   option "--eco", 2, "target identifier", "Automatically compile saved eco files to the given directory."
   option "--auto", 0, "", "Start up auto mode automatically."
   option "--passive", 0, "", "Use FTP in passive mode."
+  option "--vanilla_ftp", 0, "", "Use Vanilla ruby Net::FTP. Disables automatica directory creation."
 
   help ""
 
@@ -38,6 +39,7 @@ class Harmony < TerminalRunner
     @timeout = @@options.include?("--timeout") ? @@options["--timeout"][0].to_i : 2
     @compile_coffeescript = @@options.include?("--coffee") ? @@options["--coffee"][0] : nil
     @passive_mode = @@options.include?("--passive")
+    @use_vanilla_ftp = @@options.include?("--vanilla_ftp")
     @ignored = []
 
     @compile_eco = nil
@@ -160,7 +162,7 @@ class Harmony < TerminalRunner
           Timeout::timeout(@timeout) do
             rpath = self.remote_path_for(file)
 
-            if @ftp.mkdir_p rpath
+            if @ftp.respond_to?(:mkdir_p) && @ftp.mkdir_p(rpath)
               puts " ## Created new directory #{rpath}".pink
             end
 
@@ -237,7 +239,12 @@ class Harmony < TerminalRunner
 
       if @ftp.nil? || @ftp.closed?
         puts " ## Connection opening".red
-        @ftp = BetterFTP.new(@server, @user, @password)
+        if @use_vanilla_ftp
+          puts "(Using Vanilla FTP)".pink
+          @ftp = Net::FTP.new(@server, @user, @password)
+        else
+          @ftp = BetterFTP.new(@server, @user, @password)
+        end
         @ftp.passive = @passive_mode
       end
     end
