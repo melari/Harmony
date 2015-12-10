@@ -17,6 +17,7 @@ class Harmony < TerminalRunner
   option "--coffee", 1, "target", "Automatically compile saved coffeescript files to the given directory."
   option "--eco", 2, "target identifier", "Automatically compile saved eco files to the given directory."
   option "--auto", 0, "", "Start up auto mode automatically."
+  option "--passive", 0, "", "Use FTP in passive mode."
 
   help ""
 
@@ -36,6 +37,7 @@ class Harmony < TerminalRunner
     @remote_path = @@options.include?("--remote") ? @@options["--remote"][0] : ""
     @timeout = @@options.include?("--timeout") ? @@options["--timeout"][0].to_i : 2
     @compile_coffeescript = @@options.include?("--coffee") ? @@options["--coffee"][0] : nil
+    @passive_mode = @@options.include?("--passive")
     @ignored = []
 
     @compile_eco = nil
@@ -236,6 +238,7 @@ class Harmony < TerminalRunner
       if @ftp.nil? || @ftp.closed?
         puts " ## Connection opening".red
         @ftp = BetterFTP.new(@server, @user, @password)
+        @ftp.passive = @passive_mode
       end
     end
     true
