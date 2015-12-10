@@ -103,9 +103,14 @@ class Harmony < TerminalRunner
     self.deploy if command == "deploy"
     self.start_auto if command == "auto"
     self.stop_auto if command == "stop"
-    @modified_proc.call(File.new(arg), nil) if command == "mark"
+    self.mark_file(arg) if command == "mark"
     self.ftp if command == "ftp"
     false
+  end
+
+  def self.mark_file(filename)
+    return puts "File does not exist." unless File.exist?(filename)
+    @modified_proc.call(File.new(filename), nil)
   end
 
   def self.ftp
@@ -145,7 +150,10 @@ class Harmony < TerminalRunner
     failed = !self.open_connection
     unless failed
       @modified.each do |file|
-        next if file.end_with? "~"
+        if file.end_with?("~") || !File.exist?(file)
+          puts " XX Skipping #{file}. It probably doesn't exist".yellow
+          next
+        end
         begin
           Timeout::timeout(@timeout) do
             rpath = self.remote_path_for(file)
