@@ -246,6 +246,7 @@ class Harmony < TerminalRunner
           @ftp = BetterFTP.new(@server, @user, @password)
         end
         @ftp.passive = @passive_mode
+        puts "(Using Passive Mode)".pink if @passive_mode
       end
     end
     true
