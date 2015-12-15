@@ -2,6 +2,7 @@
 require 'net/ftp'
 require 'terrun'
 require 'timeout'
+require 'fileutils'
 
 class Harmony < TerminalRunner
   name "Harmony"
@@ -19,6 +20,7 @@ class Harmony < TerminalRunner
   option "--auto", 0, "", "Start up auto mode automatically."
   option "--passive", 0, "", "Use FTP in passive mode."
   option "--vanilla_ftp", 0, "", "Use Vanilla ruby Net::FTP. Disables automatica directory creation."
+  option "--local", 0, "", "Use a local copy instead of an FTP transfer."
 
   help ""
 
@@ -40,6 +42,7 @@ class Harmony < TerminalRunner
     @compile_coffeescript = @@options.include?("--coffee") ? @@options["--coffee"][0] : nil
     @passive_mode = @@options.include?("--passive")
     @use_vanilla_ftp = @@options.include?("--vanilla_ftp")
+    @use_local = @@options.include?("--local")
     @ignored = []
 
     @compile_eco = nil
@@ -242,6 +245,9 @@ class Harmony < TerminalRunner
         if @use_vanilla_ftp
           puts "(Using Vanilla FTP)".pink
           @ftp = Net::FTP.new(@server, @user, @password)
+        elsif @use_local
+          puts "(Using Local non-FTP)".pink
+          @ftp = LocalCopyFTP.new
         else
           @ftp = BetterFTP.new(@server, @user, @password)
         end
@@ -290,6 +296,44 @@ class String
 
   def pink
     colorize(35)
+  end
+end
+
+# Only performs a local copy, instead of using an FTP connection
+class LocalCopyFTP
+  @dir = '/'
+
+  def mkdir_p(path)
+    FileUtils.mkdir_p path
+  end
+
+  def chdir(path)
+    @dir = path
+  end
+
+  def puttextfile(file)
+    FileUtils.cp file, @dir
+  end
+
+  def putbinaryfile(file)
+    puttextfile(file)
+  end
+
+  def connect(_host, _port=nil)
+  end
+
+  def passive=(_val)
+  end
+
+  def list
+    []
+  end
+
+  def closed?
+    false
+  end
+
+  def close
   end
 end
 
