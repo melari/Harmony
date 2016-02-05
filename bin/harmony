@@ -1,8 +1,10 @@
 #!/usr/bin/env ruby
 require 'net/ftp'
+require 'net/sftp'
 require 'terrun'
 require 'timeout'
 require 'fileutils'
+require 'byebug'
 
 class Harmony < TerminalRunner
   name "Harmony"
@@ -21,6 +23,7 @@ class Harmony < TerminalRunner
   option "--passive", 0, "", "Use FTP in passive mode."
   option "--vanilla_ftp", 0, "", "Use Vanilla ruby Net::FTP. Disables automatica directory creation."
   option "--local", 0, "", "Use a local copy instead of an FTP transfer."
+  option "--sftp", 1, "port", "Use SFTP instead of standard FTP"
 
   help ""
 
@@ -42,6 +45,8 @@ class Harmony < TerminalRunner
     @compile_coffeescript = @@options.include?("--coffee") ? @@options["--coffee"][0] : nil
     @passive_mode = @@options.include?("--passive")
     @use_vanilla_ftp = @@options.include?("--vanilla_ftp")
+    @use_sftp = @@options.include?("--sftp")
+    @sftp_port = @@options["--sftp"][0]
     @use_local = @@options.include?("--local")
     @ignored = []
 
@@ -92,8 +97,9 @@ class Harmony < TerminalRunner
         break if self.get_command
       end
     rescue => e
-      puts e.to_s.red
       puts " ## FATAL ERROR OCCURRED. SHUTTING DOWN.".red
+      puts "#{e.class.name}: #{e.to_s} (#{e.message})".red
+      puts e.backtrace
     end
     @thread.kill if @thread
     self.close_connection
@@ -181,7 +187,7 @@ class Harmony < TerminalRunner
         rescue Timeout::Error
           failed = true
           puts " ## [ FAIL  ] #{file} timed out while syncing".red
-        rescue Net::FTPError => e
+        rescue Net::FTPError, Net::SFTP::Exception, Net::SSH::Exception => e
           failed = true
           puts " ## [ FAIL  ] #{file} failed to sync".red
           puts e.message
@@ -234,7 +240,7 @@ class Harmony < TerminalRunner
       if @ftp
         begin
           @ftp.list
-        rescue Net::FTPError
+        rescue Net::FTPError, Net::SFTP::Exception, Net::SSH::Exception
           puts " ## Connection was closed by server".pink
           @ftp.close
         end
@@ -248,7 +254,11 @@ class Harmony < TerminalRunner
         elsif @use_local
           puts "(Using Local non-FTP)".pink
           @ftp = LocalCopyFTP.new
+        elsif @use_sftp
+          puts "(Using SFTP)".pink
+          @ftp = SFTP.new(@server, @user, @password, @sftp_port)
         else
+          puts "(Using FTP)".pink
           @ftp = BetterFTP.new(@server, @user, @password)
         end
         @ftp.passive = @passive_mode
@@ -296,6 +306,88 @@ class String
 
   def pink
     colorize(35)
+  end
+end
+
+# Wrapper interface for SFTP to make it confirm to the same API
+class SFTP
+  @dir = '/'
+
+  def initialize(server, user, password, port)
+    @server = server
+    @user = user
+    @password = password
+    @port = port
+    @netsftp = Net::SFTP.start(@server, @user, password: @password, port: @port)
+    @closed = false
+    @created_paths_cache = []
+  end
+
+  def chdir(path)
+    @dir = path
+  end
+
+  def puttextfile(file)
+    @netsftp.upload!(file, @dir + '/' + file.split('/').last)
+  end
+
+  def putbinaryfile(file)
+    puttextfile(file)
+  end
+
+  def list
+    l = []
+    @netsftp.dir.foreach(@dir) { |e| l << e }
+    l
+  end
+
+  def closed?
+    @netsftp.closed? || @closed
+  end
+
+  def close
+    @netsftp.close_channel
+  rescue Net::SSH::Exception
+  ensure
+    @closed = true
+  end
+
+  def mkdir_p(dir)
+    made_path = false
+
+    parts = dir.split("/")
+    if parts.first == "~"
+      growing_path = ""
+    else
+      growing_path = "/"
+    end
+    for part in parts
+      next if part == ""
+      if growing_path == ""
+        growing_path = part
+      else
+        growing_path = File.join(growing_path, part)
+      end
+      unless @created_paths_cache.include?(growing_path)
+        begin
+          mkdir(growing_path)
+          chdir(growing_path)
+          made_path = true
+        rescue Net::SFTP::StatusException
+        end
+        @created_paths_cache << growing_path
+      else
+      end
+    end
+
+    made_path
+  end
+
+  def mkdir(path)
+    @netsftp.mkdir!(path)
+  end
+
+  def passive=(_)
   end
 end
 
